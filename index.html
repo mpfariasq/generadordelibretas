@@ -1,26 +1,26 @@
-<!DOCTYPE html>
+
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Generador de Libretas de Calificaciones - Colegio San José</title>
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS para diseño responsive y moderno -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts -->
+    <!-- Google Fonts elegantes -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     
-    <!-- React and ReactDOM UMD -->
+    <!-- React y ReactDOM UMD -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
-    <!-- Babel Standalone para compilar JSX en el navegador -->
+    <!-- Babel Standalone para compilar JSX en vivo -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.17/babel.min.js"></script>
     
-    <!-- jsPDF & AutoTable -->
+    <!-- jsPDF & AutoTable de máxima calidad -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
-    <!-- SheetJS (XLSX Reader) -->
+    <!-- SheetJS para la lectura perfecta de archivos .xlsx -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- JSZip para empaquetado masivo de PDFs -->
+    <!-- JSZip para compilar descargas masivas en ZIP -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <style>
@@ -30,7 +30,7 @@
         .font-serif-elegant {
             font-family: 'Playfair Display', serif;
         }
-        /* Clases institucionales bordo/vino */
+        /* Color institucional bordó oficial */
         .bg-burgundy {
             background-color: #800020 !important;
         }
@@ -54,28 +54,30 @@
             border-color: #800020 !important;
         }
 
-        /* Estilizar barra de desplazamiento para ver todas las notas */
+        /* Scrollbar fluido para las tablas de calificaciones */
         .custom-scrollbar::-webkit-scrollbar {
-            height: 10px;
-            width: 8px;
+            height: 8px;
+            width: 6px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
             background: #f1f5f9;
-            border-radius: 6px;
+            border-radius: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
             background: #cbd5e1;
-            border-radius: 6px;
-            border: 2px solid #f1f5f9;
+            border-radius: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #800020;
         }
 
+        /* Configuración estricta de impresión en 2 hojas horizontales */
         @media print {
             body {
                 background-color: white !important;
                 color: black !important;
+                padding: 0 !important;
+                margin: 0 !important;
             }
             .no-print {
                 display: none !important;
@@ -84,9 +86,24 @@
                 box-shadow: none !important;
                 border: none !important;
                 margin: 0 !important;
-                padding: 0 !important;
+                padding: 0.2cm 0 !important;
                 width: 100% !important;
-                page-break-inside: avoid;
+                display: block !important;
+            }
+            .print-page-break {
+                page-break-before: always !important;
+                break-before: page !important;
+                margin-top: 0 !important;
+                padding-top: 0.8cm !important;
+            }
+            .print-container {
+                display: block !important;
+                width: 297mm !important; /* Forzar ancho horizontal de hoja A4 */
+                margin: 0 auto !important;
+            }
+            @page {
+                size: A4 landscape;
+                margin: 10mm;
             }
         }
     </style>
@@ -98,7 +115,6 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // Diccionario nativo de iconos vectoriales para evitar interferencias en el DOM con Lucide clásico
         function Icon({ name, className = "w-4 h-4" }) {
             const attrs = {
                 className,
@@ -132,15 +148,6 @@
                             <polyline points="16 16 12 12 8 16" />
                             <line x1="12" y1="12" x2="12" y2="21" />
                             <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
-                            <polyline points="16 16 12 12 8 16" />
-                        </svg>
-                    );
-                case "plus-circle":
-                    return (
-                        <svg {...attrs}>
-                            <circle cx="12" cy="12" r="10" />
-                            <line x1="12" y1="8" x2="12" y2="16" />
-                            <line x1="8" y1="12" x2="16" y2="12" />
                         </svg>
                     );
                 case "search":
@@ -171,7 +178,6 @@
                             <polyline points="14 2 14 8 20 8" />
                             <line x1="16" y1="13" x2="8" y2="13" />
                             <line x1="16" y1="17" x2="8" y2="17" />
-                            <polyline points="10 9 9 9 8 9" />
                         </svg>
                     );
                 case "printer":
@@ -187,8 +193,6 @@
                         <svg {...attrs}>
                             <polyline points="3 6 5 6 21 6" />
                             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                            <line x1="10" y1="11" x2="10" y2="17" />
-                            <line x1="14" y1="11" x2="14" y2="17" />
                         </svg>
                     );
                 case "check-circle":
@@ -211,10 +215,8 @@
                         <svg {...attrs}>
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                             <polyline points="14 2 14 8 20 8" />
-                            <path d="M8 13h2v2H8z" />
-                            <path d="M14 13h2v2h-2z" />
-                            <path d="M8 17h2v2H8z" />
-                            <path d="M14 17h2v2h-2z" />
+                            <rect x="8" y="13" width="3" height="3" />
+                            <rect x="13" y="13" width="3" height="3" />
                         </svg>
                     );
                 default:
@@ -223,38 +225,35 @@
         }
 
         function App() {
-            // Estados principales
-            const [originalStudents, setOriginalStudents] = useState([]);
+            // Colección de cursos cargados de forma continua para retención en memoria
+            const [courses, setCourses] = useState({}); // Clave: NombreCurso -> Estudiantes
+            const [selectedCourseName, setSelectedCourseName] = useState("");
             const [students, setStudents] = useState([]);
             const [selectedStudent, setSelectedStudent] = useState(null);
-            const [courseName, setCourseName] = useState("");
+            
             const [logo, setLogo] = useState(localStorage.getItem('school_logo') || "");
             const [searchQuery, setSearchQuery] = useState("");
             const [toast, setToast] = useState(null);
             const [isDragging, setIsDragging] = useState(false);
+            
             const [isBulkGenerating, setIsBulkGenerating] = useState(false);
             const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
-            
-            // Estructura global de columnas dinámicas descubiertas en el Excel
-            const [globalColumns, setGlobalColumns] = useState([]);
-            // Agrupación de columnas por núcleo para las cabeceras de doble fila
-            const [nucleoHeaders, setNucleoHeaders] = useState([]);
 
-            // Sincronizar título de la pestaña
+            // Sincronizar título de pestaña del navegador de forma reactiva
             useEffect(() => {
-                if (courseName) {
-                    document.title = `Libretas - ${courseName}`;
+                if (selectedCourseName) {
+                    document.title = `Libretas - ${selectedCourseName}`;
                 } else {
                     document.title = "Generador de Libretas de Calificaciones - Colegio San José";
                 }
-            }, [courseName]);
+            }, [selectedCourseName]);
 
             const showToast = (message, type = "success") => {
                 setToast({ message, type });
                 setTimeout(() => setToast(null), 4500);
             };
 
-            // Formatear fecha actual de generación (DD/MM/AAAA)
+            // Formateador de fecha de generación al pie
             const getFormattedDate = () => {
                 const today = new Date();
                 const day = String(today.getDate()).padStart(2, '0');
@@ -263,7 +262,7 @@
                 return `${day}/${month}/${year}`;
             };
 
-            // Validar si una nota es menor que 7 (contemplando formato numérico con coma de Excel castellano)
+            // Evaluar notas bajas de forma segura
             const isBelowSeven = (val) => {
                 if (val === undefined || val === null || val === "") return false;
                 const normalized = val.toString().replace(',', '.').trim();
@@ -271,14 +270,16 @@
                 return !isNaN(num) && num < 7;
             };
 
-            // Obtener el número de núcleo usando expresión regular de forma segura
-            const getNucleoNumber = (nucleoStr) => {
-                if (!nucleoStr) return 999;
-                const match = nucleoStr.toString().match(/N[ÚU]CLEO\s*(\d+)/i);
-                return match ? parseInt(match[1], 10) : 999;
-            };
+            // Estructura fija de los 8 núcleos de aprendizaje
+            const NUCLEOS_METADATA = Array.from({ length: 8 }, (_, i) => {
+                const nIndex = i + 1;
+                return {
+                    num: nIndex,
+                    title: `NÚCLEO ${nIndex}`,
+                    subheaders: ["N1", "N2", "N3", "R1", "R2", `NFN${nIndex}`]
+                };
+            });
 
-            // Compresión de imagen óptima para almacenamiento y generación rápida de PDFs
             const handleLogoUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -298,10 +299,9 @@
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
                         const compressedBase64 = canvas.toDataURL('image/jpeg', 0.60);
-                        
                         setLogo(compressedBase64);
                         localStorage.setItem('school_logo', compressedBase64);
-                        showToast("Logo de la escuela configurado correctamente.", "success");
+                        showToast("Logo institucional configurado correctamente.", "success");
                     };
                 };
                 reader.readAsDataURL(file);
@@ -310,10 +310,9 @@
             const removeLogo = () => {
                 setLogo("");
                 localStorage.removeItem('school_logo');
-                showToast("Se removió el logo institucional.", "info");
+                showToast("Logo institucional removido.", "info");
             };
 
-            // Motor inteligente avanzado para procesar múltiples pestañas de materias individuales
             const processExcelFile = (file) => {
                 if (!file) return;
 
@@ -326,14 +325,11 @@
                         const data = e.target.result;
                         const workbook = XLSX.read(data, { type: 'binary' });
                         
-                        const studentMap = new Map(); // Llave: nombre en mayúsculas -> datos del estudiante
-                        const columnsTracker = []; // Lista ordenada de todas las columnas únicas de calificaciones encontradas
-                        const columnsKeysSeen = new Set();
+                        const studentMap = new Map();
 
-                        // Escanear cada pestaña del archivo Excel (una para cada materia)
                         workbook.SheetNames.forEach(sheetName => {
                             const nameLower = sheetName.toLowerCase();
-                            // Ignorar pestañas de síntesis generales vacías o de resumen
+                            // Ignorar pestañas accesorias
                             if (nameLower.includes("sintesis") || nameLower.includes("síntesis") || nameLower.includes("resumen")) {
                                 return;
                             }
@@ -342,7 +338,7 @@
                             const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                             if (rows.length < 3) return;
 
-                            // 1. Encontrar nombre oficial de la asignatura y docente
+                            // Leer nombre oficial de la Asignatura y su Docente
                             let materiaName = sheetName.trim();
                             let docenteName = "Docente s/d";
 
@@ -364,7 +360,7 @@
                                 }
                             }
 
-                            // 2. Identificar la cabecera de Alumnos y las columnas de Notas
+                            // Ubicar la fila de cabecera de estudiantes
                             let studentHeaderRowIdx = -1;
                             let studentNameColIdx = -1;
 
@@ -387,49 +383,13 @@
                                 return;
                             }
 
-                            const headerRow = rows[studentHeaderRowIdx];
-                            const subHeaderRow = rows[studentHeaderRowIdx + 1] || [];
-
-                            // Encontrar todas las columnas de calificaciones (N1, N2, ..., NFN1, etc.)
-                            const activeColsInSheet = []; // { colIdx, nucleo, subheader, key }
-                            let currentNucleo = "NÚCLEO 1";
-
-                            for (let c = studentNameColIdx + 1; c < Math.max(headerRow.length, subHeaderRow.length); c++) {
-                                const headCell = headerRow[c] ? headerRow[c].toString().trim().toUpperCase() : "";
-                                const subCell = subHeaderRow[c] ? subHeaderRow[c].toString().trim() : "";
-
-                                if (headCell.includes("NÚCLEO") || headCell.includes("NUCLEO")) {
-                                    currentNucleo = headerRow[c].toString().trim().toUpperCase();
-                                }
-
-                                if (subCell) {
-                                    const uniqueKey = `${currentNucleo}_${subCell.toUpperCase()}`;
-                                    activeColsInSheet.push({
-                                        colIdx: c,
-                                        nucleo: currentNucleo,
-                                        subheader: subCell,
-                                        key: uniqueKey
-                                    });
-
-                                    // Registrar de manera global si no lo hemos visto para alinear la matriz gigante
-                                    if (!columnsKeysSeen.has(uniqueKey)) {
-                                        columnsKeysSeen.add(uniqueKey);
-                                        columnsTracker.push({
-                                            nucleo: currentNucleo,
-                                            subheader: subCell,
-                                            key: uniqueKey
-                                        });
-                                    }
-                                }
-                            }
-
-                            // 3. Registrar calificaciones de cada alumno en esta materia
+                            // Mapeo estructurado directo de notas respetando fielmente el Excel
                             for (let r = studentHeaderRowIdx + 2; r < rows.length; r++) {
                                 const row = rows[r];
                                 if (!row || !row[studentNameColIdx]) continue;
 
                                 const rawName = row[studentNameColIdx].toString().trim();
-                                if (rawName.toUpperCase().includes("ESTUDIANTE") || rawName.toUpperCase().includes("PROMEDIO") || rawName.toUpperCase().includes("DOCENTE")) {
+                                if (rawName.toUpperCase().includes("ESTUDIANTE") || rawName.toUpperCase().includes("PROMEDIO") || rawName.toUpperCase().includes("DOCENTE") || rawName === "") {
                                     continue;
                                 }
 
@@ -445,59 +405,45 @@
                                 if (!studentObj.materias[materiaName]) {
                                     studentObj.materias[materiaName] = {
                                         docente: docenteName,
-                                        calificaciones: {} // key -> valor
+                                        calificaciones: {}
                                     };
                                 }
 
-                                activeColsInSheet.forEach(({ colIdx, key }) => {
-                                    const val = row[colIdx];
-                                    const grade = (val !== undefined && val !== null) ? val.toString().trim() : "";
-                                    studentObj.materias[materiaName].calificaciones[key] = grade;
-                                });
-                            }
-                        });
-
-                        // ORDENAMIENTO DINÁMICO DE NÚCLEOS (Evita que el 7 aparezca primero)
-                        columnsTracker.sort((a, b) => {
-                            const numA = getNucleoNumber(a.nucleo);
-                            const numB = getNucleoNumber(b.nucleo);
-                            if (numA !== numB) {
-                                return numA - numB;
-                            }
-                            return a.subheader.localeCompare(b.subheader, undefined, { numeric: true });
-                        });
-
-                        // Agrupar núcleos para renderizar headers con colspan
-                        const headersAgrupados = [];
-                        columnsTracker.forEach(col => {
-                            const last = headersAgrupados[headersAgrupados.length - 1];
-                            if (last && last.name === col.nucleo) {
-                                last.colspan += 1;
-                            } else {
-                                headersAgrupados.push({ name: col.nucleo, colspan: 1 });
+                                let currentDataColIdx = studentNameColIdx + 1;
+                                for (let n = 1; n <= 8; n++) {
+                                    const subheaders = ["N1", "N2", "N3", "R1", "R2", `NFN${n}`];
+                                    subheaders.forEach((sub) => {
+                                        const cellVal = row[currentDataColIdx];
+                                        const finalVal = (cellVal !== undefined && cellVal !== null) ? cellVal.toString().trim() : "";
+                                        studentObj.materias[materiaName].calificaciones[`NUC${n}_${sub}`] = finalVal;
+                                        currentDataColIdx++;
+                                    });
+                                }
                             }
                         });
 
                         const parsedStudents = Array.from(studentMap.values());
                         if (parsedStudents.length === 0) {
-                            showToast("No se encontraron datos en las pestañas de materias del Excel.", "error");
+                            showToast("No se encontraron registros válidos de estudiantes en el Excel.", "error");
                             return;
                         }
 
-                        // Ordenar alumnos alfabéticamente
                         parsedStudents.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
-                        setGlobalColumns(columnsTracker);
-                        setNucleoHeaders(headersAgrupados);
-                        setOriginalStudents(JSON.parse(JSON.stringify(parsedStudents)));
+                        // Consolidar carga continua acumulando cursos sin sobrescribir el estado previo
+                        setCourses(prev => {
+                            const updated = { ...prev, [formattedCourse]: parsedStudents };
+                            return updated;
+                        });
+
+                        setSelectedCourseName(formattedCourse);
                         setStudents(parsedStudents);
-                        setCourseName(formattedCourse);
                         setSelectedStudent(parsedStudents[0]);
-                        showToast(`Se cargó el curso ${formattedCourse} con ${parsedStudents.length} alumnos de forma exitosa.`, "success");
+                        showToast(`¡Curso ${formattedCourse} cargado correctamente! (${parsedStudents.length} estudiantes)`, "success");
 
                     } catch (error) {
                         console.error(error);
-                        showToast("Error al decodificar la estructura del Excel. Asegúrate de usar la libreta oficial.", "error");
+                        showToast("Error procesando la planilla. Verifique el formato e inténtelo de nuevo.", "error");
                     }
                 };
                 reader.readAsBinaryString(file);
@@ -508,7 +454,6 @@
                 processExcelFile(file);
             };
 
-            // Configuración Drag & Drop
             const handleDragOver = (e) => {
                 e.preventDefault();
                 setIsDragging(true);
@@ -525,7 +470,16 @@
                 if (file && (file.name.endsWith('.xls') || file.name.endsWith('.xlsx'))) {
                     processExcelFile(file);
                 } else {
-                    showToast("Por favor, sube un archivo Excel (.xlsx o .xls).", "error");
+                    showToast("Sube únicamente archivos Excel (.xls o .xlsx).", "error");
+                }
+            };
+
+            const handleCourseSwitch = (courseName) => {
+                if (courses[courseName]) {
+                    setSelectedCourseName(courseName);
+                    setStudents(courses[courseName]);
+                    setSelectedStudent(courses[courseName][0]);
+                    showToast(`Visualizando el curso: ${courseName}`, "info");
                 }
             };
 
@@ -533,155 +487,238 @@
                 student.nombre.toLowerCase().includes(searchQuery.toLowerCase())
             );
 
-            // Generador de un PDF único en formato APAISADO (Landscape) optimizado en tamaño e institucional bordó
-            const generateStudentPDFDocument = (student) => {
+            const generateStudentPDF = (student, cName) => {
                 const { jsPDF } = window.jspdf;
-                const doc = new jsPDF('l', 'mm', 'a4');
-                
-                // Fondo corporativo sutil
-                doc.setFillColor(253, 251, 251);
-                doc.rect(0, 0, 297, 210, 'F');
+                const doc = new jsPDF('l', 'mm', 'a4'); // Paisaje A4 (297x210mm)
 
-                // Cabecera superior institucional (Bordó)
-                doc.setFillColor(128, 0, 32); 
-                doc.rect(12, 12, 273, 5, 'F');
+                const drawTemplate = (pageNum, studentName, currentCourse) => {
+                    // Fondo premium institucional
+                    doc.setFillColor(253, 251, 251);
+                    doc.rect(0, 0, 297, 210, 'F');
 
-                // Incrustar Logo si existe
-                if (logo) {
-                    try {
-                        doc.addImage(logo, 'JPEG', 12, 21, 24, 16); 
-                    } catch (err) {
-                        console.error("No se pudo añadir el logo al PDF", err);
+                    // Barra superior corporativa bordó
+                    doc.setFillColor(128, 0, 32); 
+                    doc.rect(12, 12, 273, 5, 'F');
+
+                    // Logo institucional
+                    if (logo) {
+                        try {
+                            doc.addImage(logo, 'JPEG', 12, 20, 24, 15); 
+                        } catch (err) {
+                            console.error("Error al renderizar el logo en el PDF", err);
+                        }
                     }
+
+                    // Títulos y metadatos
+                    doc.setFont("Helvetica", "bold");
+                    doc.setFontSize(15);
+                    doc.setTextColor(128, 0, 32);
+                    doc.text("COLEGIO SAN JOSÉ", logo ? 40 : 12, 25);
+
+                    doc.setFont("Helvetica", "bold");
+                    doc.setFontSize(10);
+                    doc.setTextColor(51, 65, 85);
+                    doc.text(`INFORME DE CALIFICACIONES - ${currentCourse || "GENERAL"}`, logo ? 40 : 12, 31);
+
+                    // Recuadro ficha del estudiante
+                    doc.setFillColor(255, 255, 255);
+                    doc.setDrawColor(241, 218, 221);
+                    doc.roundedRect(12, 38, 273, 16, 2, 2, 'FD');
+
+                    doc.setFont("Helvetica", "bold");
+                    doc.setFontSize(8);
+                    doc.setTextColor(128, 0, 32);
+                    doc.text("ESTUDIANTE", 16, 43);
+                    doc.setTextColor(30, 41, 59);
+                    doc.setFontSize(11);
+                    doc.text(studentName.toUpperCase(), 16, 49);
+
+                    doc.setFont("Helvetica", "bold");
+                    doc.setFontSize(8);
+                    doc.setTextColor(128, 0, 32);
+                    doc.text("CURSO / DIVISIÓN", 190, 43);
+                    doc.setTextColor(30, 41, 59);
+                    doc.setFontSize(11);
+                    doc.text(currentCourse || "GENERAL", 190, 49);
+
+                    doc.setFont("Helvetica", "bold");
+                    doc.setFontSize(8);
+                    doc.setTextColor(128, 0, 32);
+                    doc.text("FECHA EMISIÓN", 242, 43);
+                    doc.setTextColor(30, 41, 59);
+                    doc.setFontSize(11);
+                    doc.text(getFormattedDate(), 242, 49);
+                };
+
+                const writeFooter = (pageNum) => {
+                    doc.setFont("Helvetica", "normal");
+                    doc.setFontSize(8.5);
+                    doc.setTextColor(148, 163, 184);
+                    doc.text(`Informe académico oficial de calificaciones  |  Colegio San José`, 12, 198);
+                    doc.text(`Página ${pageNum} de 2  |  Emitido el: ${getFormattedDate()}`, 285, 198, { align: "right" });
+                };
+
+                // ---- HOJA 1: Núcleos 1 a 4 ----
+                drawTemplate(1, student.nombre, cName);
+
+                // Cabeceras agrupadas primera parte
+                const page1HeadersGrouped = [{ content: 'Asignatura / Docente', rowSpan: 2, valign: 'middle', halign: 'left' }];
+                for (let n = 1; n <= 4; n++) {
+                    page1HeadersGrouped.push({ content: `NÚCLEO ${n}`, colSpan: 6, halign: 'center' });
                 }
 
-                // Títulos oficiales - Bordó
-                doc.setFont("Helvetica", "bold");
-                doc.setFontSize(18);
-                doc.setTextColor(128, 0, 32);
-                doc.text(courseName || "LIBRETA DE CALIFICACIONES", logo ? 40 : 12, 27);
-
-                doc.setFont("Helvetica", "normal");
-                doc.setFontSize(8);
-                doc.setTextColor(100, 116, 139);
-                doc.text("INFORME DE RENDIMIENTO ACADÉMICO - COLEGIO SAN JOSÉ", logo ? 40 : 12, 33);
-
-                // Tarjeta informativa del alumno
-                doc.setFillColor(255, 255, 255);
-                doc.setDrawColor(241, 218, 221);
-                doc.roundedRect(12, 40, 273, 16, 2, 2, 'FD');
-
-                doc.setFont("Helvetica", "bold");
-                doc.setFontSize(7.5);
-                doc.setTextColor(128, 0, 32);
-                doc.text("ESTUDIANTE", 16, 45);
-                doc.setTextColor(30, 41, 59);
-                doc.setFontSize(10);
-                doc.text(student.nombre.toUpperCase(), 16, 51);
-
-                doc.setFont("Helvetica", "bold");
-                doc.setFontSize(7.5);
-                doc.setTextColor(128, 0, 32);
-                doc.text("CURSO / DIVISIÓN", 200, 45);
-                doc.setTextColor(30, 41, 59);
-                doc.setFontSize(10);
-                doc.text(courseName || "GENERAL", 200, 51);
-
-                // Construcción de la grilla de doble cabecera para AutoTable
-                const row1_Header = ['Asignatura y Docente'];
-                nucleoHeaders.forEach(nh => {
-                    row1_Header.push({ content: nh.name, colSpan: nh.colspan, halign: 'center' });
-                });
-
-                const row2_Header = [''];
-                globalColumns.forEach(col => {
-                    row2_Header.push(col.subheader);
-                });
-
-                // Armar filas de calificaciones exactas del estudiante
-                const tableBody = Object.entries(student.materias).map(([materiaName, dataObj]) => {
-                    const rowCells = [`${materiaName}\nDoc: ${dataObj.docente}`];
-                    globalColumns.forEach(col => {
-                        const val = dataObj.calificaciones[col.key];
-                        rowCells.push(val !== undefined ? val : "");
+                const page1Subheaders = [];
+                for (let n = 1; n <= 4; n++) {
+                    ["N1", "N2", "N3", "R1", "R2", `NFN${n}`].forEach(sub => {
+                        page1Subheaders.push({ content: sub, halign: 'center' });
                     });
+                }
+
+                // Renderizado exacto con salto de línea entre Materia y Docente
+                const page1Body = Object.entries(student.materias).map(([materiaName, dataObj]) => {
+                    const rowCells = [`${materiaName}\nDoc: ${dataObj.docente}`];
+                    for (let n = 1; n <= 4; n++) {
+                        ["N1", "N2", "N3", "R1", "R2", `NFN${n}`].forEach(sub => {
+                            rowCells.push(dataObj.calificaciones[`NUC${n}_${sub}`] || "");
+                        });
+                    }
                     return rowCells;
                 });
 
-                // AutoTable apaisado de precisión con tamaño de letra extra fino y angosto
                 doc.autoTable({
-                    startY: 61,
-                    margin: { left: 12, right: 12, bottom: 20 },
-                    head: [row1_Header, row2_Header],
-                    body: tableBody,
+                    startY: 58,
+                    margin: { left: 12, right: 12, bottom: 15 },
+                    head: [page1HeadersGrouped, page1Subheaders],
+                    body: page1Body,
                     theme: 'grid',
                     headStyles: {
-                        fillColor: [128, 0, 32], // Color bordó
+                        fillColor: [128, 0, 32],
                         textColor: [255, 255, 255],
                         fontStyle: 'bold',
-                        fontSize: 6.5, // Más pequeña
+                        fontSize: 8.5,
                         halign: 'center',
                         valign: 'middle',
-                        cellPadding: 1.2
+                        cellPadding: 1.5
                     },
                     styles: {
-                        fontSize: 6.0, // Más angosto para ajuste óptimo
-                        cellPadding: 1, // Reducción de espacio
-                        lineColor: [226, 232, 240],
-                        halign: 'center' // Centrar por defecto todas las calificaciones
+                        fontSize: 8,
+                        cellPadding: 1.5,
+                        lineColor: [203, 213, 225],
+                        halign: 'center'
                     },
                     columnStyles: {
-                        0: { cellWidth: 38, halign: 'left', fontStyle: 'bold' } // Columna de materias más estrecha
+                        0: { cellWidth: 48, halign: 'left', fontStyle: 'bold', fontSize: 8.5 }
                     },
                     didParseCell: function (data) {
-                        if (data.row.section === 'head' && data.column.index === 0) {
-                            data.cell.styles.halign = 'left';
-                        }
-                        
-                        // Resaltado de NFN/NFS y notas menores a 7 en el PDF de manera inteligente
                         if (data.row.section === 'body' && data.column.index > 0) {
-                            const colIdx = data.column.index - 1;
-                            const currentGlobalCol = globalColumns[colIdx];
-                            if (currentGlobalCol) {
-                                const valStr = data.cell.text[0] ? data.cell.text[0].trim() : "";
-                                const isNFN = currentGlobalCol.subheader.includes("NFN") || currentGlobalCol.subheader.includes("NFS");
-                                const belowSeven = isBelowSeven(valStr);
+                            const relativeColIdx = data.column.index - 1;
+                            const subIdx = relativeColIdx % 6; 
+                            const isNFN = (subIdx === 5); // Es columna de nota final
 
-                                // 1. Remarcar columna de Nota Final de Núcleo (NFN) o Nota Final de Semestre (NFS)
-                                if (isNFN) {
-                                    data.cell.styles.fillColor = [253, 245, 246]; // Fondo bordó muy claro
-                                    data.cell.styles.fontStyle = 'bold';
-                                    data.cell.styles.textColor = [128, 0, 32]; // Texto color Bordó
-                                }
+                            const valStr = data.cell.text[0] ? data.cell.text[0].trim() : "";
+                            const belowSeven = isBelowSeven(valStr);
 
-                                // 2. Resaltar en rojo brillante si la calificación es menor a 7
-                                if (belowSeven) {
-                                    data.cell.styles.textColor = [220, 38, 38]; // Rojo brillante (#DC2626)
-                                    data.cell.styles.fontStyle = 'bold';
-                                }
+                            if (isNFN) {
+                                data.cell.styles.fillColor = [253, 245, 246]; // Fondo de destaque
+                                data.cell.styles.fontStyle = 'bold';
+                                data.cell.styles.fontSize = 10; // Nota final siempre mayor
+                                data.cell.styles.textColor = [128, 0, 32]; // NUNCA ROJA
+                            } else if (belowSeven) {
+                                data.cell.styles.textColor = [220, 38, 38]; // Notas parciales bajas en rojo
+                                data.cell.styles.fontStyle = 'bold';
                             }
                         }
                     }
                 });
 
-                // Dibujar pie de página formal con fecha de emisión en la parte inferior fija
-                doc.setFont("Helvetica", "normal");
-                doc.setFontSize(7.5);
-                doc.setTextColor(148, 163, 184);
-                doc.text(`Informe generado el: ${getFormattedDate()}`, 12, 198);
-                doc.text("Colegio San José - Documento Académico Oficial", 285, 198, { align: "right" });
+                writeFooter(1);
+
+                // ---- HOJA 2: Núcleos 5 a 8 ----
+                doc.addPage('l', 'mm', 'a4');
+                drawTemplate(2, student.nombre, cName);
+
+                // Cabeceras agrupadas segunda parte
+                const page2HeadersGrouped = [{ content: 'Asignatura / Docente', rowSpan: 2, valign: 'middle', halign: 'left' }];
+                for (let n = 5; n <= 8; n++) {
+                    page2HeadersGrouped.push({ content: `NÚCLEO ${n}`, colSpan: 6, halign: 'center' });
+                }
+
+                const page2Subheaders = [];
+                for (let n = 5; n <= 8; n++) {
+                    ["N1", "N2", "N3", "R1", "R2", `NFN${n}`].forEach(sub => {
+                        page2Subheaders.push({ content: sub, halign: 'center' });
+                    });
+                }
+
+                // Renderizado exacto con salto de línea entre Materia y Docente
+                const page2Body = Object.entries(student.materias).map(([materiaName, dataObj]) => {
+                    const rowCells = [`${materiaName}\nDoc: ${dataObj.docente}`];
+                    for (let n = 5; n <= 8; n++) {
+                        ["N1", "N2", "N3", "R1", "R2", `NFN${n}`].forEach(sub => {
+                            rowCells.push(dataObj.calificaciones[`NUC${n}_${sub}`] || "");
+                        });
+                    }
+                    return rowCells;
+                });
+
+                doc.autoTable({
+                    startY: 58,
+                    margin: { left: 12, right: 12, bottom: 15 },
+                    head: [page2HeadersGrouped, page2Subheaders],
+                    body: page2Body,
+                    theme: 'grid',
+                    headStyles: {
+                        fillColor: [128, 0, 32],
+                        textColor: [255, 255, 255],
+                        fontStyle: 'bold',
+                        fontSize: 8.5,
+                        halign: 'center',
+                        valign: 'middle',
+                        cellPadding: 1.5
+                    },
+                    styles: {
+                        fontSize: 8,
+                        cellPadding: 1.5,
+                        lineColor: [203, 213, 225],
+                        halign: 'center'
+                    },
+                    columnStyles: {
+                        0: { cellWidth: 48, halign: 'left', fontStyle: 'bold', fontSize: 8.5 }
+                    },
+                    didParseCell: function (data) {
+                        if (data.row.section === 'body' && data.column.index > 0) {
+                            const relativeColIdx = data.column.index - 1;
+                            const subIdx = relativeColIdx % 6; 
+                            const isNFN = (subIdx === 5); // Es columna de nota final
+
+                            const valStr = data.cell.text[0] ? data.cell.text[0].trim() : "";
+                            const belowSeven = isBelowSeven(valStr);
+
+                            if (isNFN) {
+                                data.cell.styles.fillColor = [253, 245, 246]; // Fondo de destaque
+                                data.cell.styles.fontStyle = 'bold';
+                                data.cell.styles.fontSize = 10; // Nota final siempre mayor
+                                data.cell.styles.textColor = [128, 0, 32]; // NUNCA ROJA
+                            } else if (belowSeven) {
+                                data.cell.styles.textColor = [220, 38, 38]; // Notas parciales bajas en rojo
+                                data.cell.styles.fontStyle = 'bold';
+                            }
+                        }
+                    }
+                });
+
+                writeFooter(2);
 
                 return doc;
             };
 
             const downloadSinglePDF = (student) => {
                 if (!student) return;
-                const doc = generateStudentPDFDocument(student);
-                doc.save(`Libreta_${student.nombre.replace(/\s+/g, '_')}_${courseName}.pdf`);
-                showToast("¡PDF del alumno descargado!", "success");
+                const doc = generateStudentPDF(student, selectedCourseName);
+                doc.save(`Libreta_${student.nombre.replace(/\s+/g, '_')}_${selectedCourseName}.pdf`);
+                showToast("¡Archivo PDF oficial de 2 páginas descargado!", "success");
             };
 
-            // Compilador Masivo: Genera un archivo ZIP con los PDFs de cada estudiante
             const downloadAllPDFsAsZip = async () => {
                 if (students.length === 0) return;
                 setIsBulkGenerating(true);
@@ -694,7 +731,7 @@
                         const student = students[i];
                         setBulkProgress({ current: i + 1, total: students.length });
 
-                        const doc = generateStudentPDFDocument(student);
+                        const doc = generateStudentPDF(student, selectedCourseName);
                         const pdfOutput = doc.output('arraybuffer');
                         
                         const cleanName = student.nombre.replace(/[\/\\?%*:|"<>]/g, '_').replace(/\s+/g, '_');
@@ -707,18 +744,105 @@
                     
                     const link = document.createElement("a");
                     link.href = URL.createObjectURL(zipContent);
-                    link.download = `Libretas_${courseName.replace(/\s+/g, '_')}.zip`;
+                    link.download = `Libretas_Colegio_San_Jose_${selectedCourseName.replace(/\s+/g, '_')}.zip`;
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
 
-                    showToast(`¡ZIP compilado con éxito! Se procesaron ${students.length} libretas.`, "success");
+                    showToast(`¡ZIP de calificaciones procesado! ${students.length} libretas exportadas.`, "success");
                 } catch (error) {
                     console.error("Error al compilar el archivo ZIP", error);
-                    showToast("No se pudo generar el archivo ZIP.", "error");
+                    showToast("Error inesperado en la compilación del archivo ZIP masivo.", "error");
                 } finally {
                     setIsBulkGenerating(false);
                 }
+            };
+
+            const renderTableSection = (student, startN, endN) => {
+                return (
+                    <div className="overflow-x-auto border border-slate-300 rounded-lg max-w-full my-2 custom-scrollbar shadow-md">
+                        <table className="w-full text-left border-collapse min-w-[750px] table-fixed">
+                            <thead>
+                                <tr className="bg-burgundy text-white border-b border-slate-350">
+                                    <th className="py-2.5 px-3 font-bold uppercase border-r border-slate-700 text-left w-56 text-[10px]">Asignatura / Docente</th>
+                                    {Array.from({ length: endN - startN + 1 }).map((_, i) => {
+                                        const n = startN + i;
+                                        return (
+                                            <th 
+                                                key={n} 
+                                                colSpan={6} 
+                                                className="py-1.5 px-1 font-extrabold uppercase text-center border-r border-slate-700 last:border-r-0 text-[11px] bg-slate-900/10"
+                                            >
+                                                NÚCLEO {n}
+                                            </th>
+                                        );
+                                    })}
+                                </tr>
+                                <tr className="bg-slate-100 text-slate-700 border-b border-slate-300">
+                                    <th className="py-2 px-3 border-r border-slate-300 w-56 text-left"></th>
+                                    {Array.from({ length: endN - startN + 1 }).map((_, i) => {
+                                        const n = startN + i;
+                                        const subheaders = ["N1", "N2", "N3", "R1", "R2", `NFN${n}`];
+                                        return subheaders.map((sub, sIdx) => {
+                                            const isNFN = sIdx === 5;
+                                            return (
+                                                <th 
+                                                    key={`${n}_${sub}`} 
+                                                    className={`py-1 px-0.5 font-bold text-center border-r border-slate-200 last:border-r-0 text-[10px] w-12 min-w-[36px] max-w-[42px] truncate ${
+                                                        isNFN ? 'bg-burgundy-light text-burgundy font-black text-[11px]' : ''
+                                                    }`}
+                                                >
+                                                    {sub}
+                                                </th>
+                                            );
+                                        });
+                                    })}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200">
+                                {Object.entries(student.materias).map(([materiaName, dataObj]) => (
+                                    <tr key={materiaName} className="hover:bg-slate-50/50 transition-colors">
+                                        {/* Primera columna: Nombre arriba, Docente abajo */}
+                                        <td className="py-2 px-3 border-r border-slate-200 w-56 shrink-0">
+                                            <div className="font-bold text-slate-800 text-xs truncate leading-normal">{materiaName}</div>
+                                            <div className="text-[10px] text-slate-500 truncate leading-normal">Doc: {dataObj.docente}</div>
+                                        </td>
+                                        {Array.from({ length: endN - startN + 1 }).map((_, i) => {
+                                            const n = startN + i;
+                                            const subheaders = ["N1", "N2", "N3", "R1", "R2", `NFN${n}`];
+                                            return subheaders.map((sub, sIdx) => {
+                                                const val = dataObj.calificaciones[`NUC${n}_${sub}`];
+                                                const isNFN = (sIdx === 5);
+                                                
+                                                // Excluir Nota Final (NFN) de las alertas en color rojo
+                                                const belowSeven = !isNFN && isBelowSeven(val);
+                                                
+                                                let cellClass = "py-2 px-0.5 text-center border-r border-slate-150 last:border-r-0 w-12 min-w-[36px] max-w-[42px] ";
+                                                
+                                                if (isNFN) {
+                                                    // Nota final más grande y destacada en negro institucional, NUNCA ROJA
+                                                    cellClass += "bg-burgundy-light font-black text-burgundy text-[14px] border-x border-burgundy-light/60 ";
+                                                } else {
+                                                    cellClass += "text-slate-700 font-semibold text-[11px] ";
+                                                }
+
+                                                if (belowSeven) {
+                                                    cellClass += "text-red-600 font-bold ";
+                                                }
+
+                                                return (
+                                                    <td key={`${n}_${sub}`} className={cellClass}>
+                                                        {val !== undefined && val !== "" ? val : "-"}
+                                                    </td>
+                                                );
+                                            });
+                                        })}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                );
             };
 
             return (
@@ -745,37 +869,50 @@
                                 )}
                                 <div>
                                     <h1 className="text-lg font-bold text-slate-850 tracking-tight flex items-center gap-2 text-burgundy font-serif-elegant">
-                                        {courseName ? `Libretas: ${courseName}` : "Colegio San José"}
+                                        Colegio San José
                                     </h1>
                                     <p className="text-xs text-slate-500">
-                                        {courseName ? "Sistema de libretas escolares activo" : "Configura tu institución y arrastra la planilla de alumnos"}
+                                        Generador inteligente de Libretas de Calificaciones
                                     </p>
                                 </div>
                             </div>
 
-                            {/* Gestión de Logo */}
+                            {/* Gestión de Cargas Continuas y Logo */}
                             <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                                {Object.keys(courses).length > 0 && (
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[11px] font-semibold text-slate-500">Curso Activo:</span>
+                                        <select 
+                                            value={selectedCourseName}
+                                            onChange={(e) => handleCourseSwitch(e.target.value)}
+                                            className="py-1.5 px-3 bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-burgundy cursor-pointer"
+                                        >
+                                            {Object.keys(courses).map(c => (
+                                                <option key={c} value={c}>{c}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
                                 <label className="cursor-pointer inline-flex items-center gap-2 py-2 px-3 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg shadow-sm transition">
                                     <Icon name="image" className="w-4 h-4 text-burgundy" />
-                                    <span>{logo ? "Reemplazar Logo" : "Subir Logo de la Escuela"}</span>
+                                    <span>{logo ? "Reemplazar Logo" : "Subir Logo"}</span>
                                     <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
                                 </label>
                                 
-                                {courseName && (
-                                    <label className="cursor-pointer inline-flex items-center gap-2 py-2 px-3 text-xs font-semibold text-white bg-burgundy hover:bg-burgundy-dark rounded-lg shadow transition">
-                                        <Icon name="upload-cloud" className="w-4 h-4" />
-                                        <span>Subir Otro Curso</span>
-                                        <input type="file" accept=".xls,.xlsx" onChange={handleFileChange} className="hidden" />
-                                    </label>
-                                )}
+                                <label className="cursor-pointer inline-flex items-center gap-2 py-2 px-3 text-xs font-semibold text-white bg-burgundy hover:bg-burgundy-dark rounded-lg shadow transition">
+                                    <Icon name="upload-cloud" className="w-4 h-4" />
+                                    <span>Cargar Curso (Excel)</span>
+                                    <input type="file" accept=".xls,.xlsx" onChange={handleFileChange} className="hidden" />
+                                </label>
                             </div>
                         </div>
                     </header>
 
                     {/* Contenido Principal */}
-                    <main className="flex-1 max-w-[95%] w-full mx-auto p-4 md:p-6 flex flex-col justify-center">
+                    <main className="flex-1 max-w-[97%] w-full mx-auto p-4 md:p-6 flex flex-col justify-center">
                         
-                        {/* 1. VISTA INICIAL (Sin Archivos Cargados) */}
+                        {/* 1. VISTA INICIAL VACÍA AL INICIO */}
                         {students.length === 0 ? (
                             <div className="max-w-2xl mx-auto w-full py-8 md:py-16">
                                 <div 
@@ -796,7 +933,7 @@
                                         Cargar Planilla de Calificaciones
                                     </h2>
                                     <p className="text-slate-500 text-sm max-w-md mx-auto mb-8">
-                                        Arrastra aquí el archivo oficial de Excel (.xlsx, .xls) de tu curso. El sistema compilará automáticamente las notas de cada pestaña de materias de forma instantánea.
+                                        Arrastra aquí el archivo Excel del curso (`Libreta 1er año B_2.xlsx`). El sistema agrupará las asignaturas y dividirá la impresión en dos hojas de forma óptima.
                                     </p>
 
                                     <label className="cursor-pointer inline-flex items-center gap-2 px-6 py-3.5 bg-burgundy hover:bg-burgundy-dark text-white rounded-xl shadow-lg font-semibold text-sm transition-all transform hover:-translate-y-0.5">
@@ -813,7 +950,7 @@
                             </div>
                         ) : (
                             
-                            /* 2. VISTA CON ALUMNOS CARGADOS */
+                            /* 2. VISTA PRINCIPAL CON DATOS */
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                                 
                                 {/* Lista de Alumnos Lateral (no-print) */}
@@ -823,7 +960,7 @@
                                             <Icon name="search" className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                                             <input 
                                                 type="text" 
-                                                placeholder="Filtrar por estudiante..." 
+                                                placeholder="Filtrar estudiante..." 
                                                 value={searchQuery}
                                                 onChange={(e) => setSearchQuery(e.target.value)}
                                                 className="w-full pl-9 pr-4 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus-ring-burgundy transition"
@@ -835,33 +972,31 @@
                                         {filteredStudents.map((student) => (
                                             <button
                                                 key={student.nombre}
-                                                onClick={() => {
-                                                    setSelectedStudent(student);
-                                                }}
+                                                onClick={() => setSelectedStudent(student)}
                                                 className={`w-full text-left p-4 flex items-center justify-between transition ${
                                                     selectedStudent && selectedStudent.nombre === student.nombre 
-                                                        ? "bg-burgundy-light/60 border-l-4 border-burgundy text-burgundy" 
-                                                        : "hover:bg-slate-50"
+                                                        ? "bg-burgundy-light/60 border-l-4 border-burgundy text-burgundy font-bold" 
+                                                        : "hover:bg-slate-50 text-slate-700"
                                                 }`}
                                             >
                                                 <div className="min-w-0 pr-3">
-                                                    <p className={`text-sm font-semibold truncate ${
-                                                        selectedStudent && selectedStudent.nombre === student.nombre ? "text-burgundy" : "text-slate-800"
+                                                    <p className={`text-xs truncate ${
+                                                        selectedStudent && selectedStudent.nombre === student.nombre ? "text-burgundy font-bold" : "text-slate-850"
                                                     }`}>
                                                         {student.nombre}
                                                     </p>
-                                                    <p className="text-[11px] text-slate-500 mt-0.5">
-                                                        {Object.keys(student.materias).length} Asignaturas cursadas
+                                                    <p className="text-[10px] text-slate-400 mt-0.5">
+                                                        {Object.keys(student.materias).length} Materias registradas
                                                     </p>
                                                 </div>
-                                                <Icon name="chevron-right" className={`w-4 h-4 shrink-0 transition ${
+                                                <Icon name="chevron-right" className={`w-3.5 h-3.5 shrink-0 transition ${
                                                     selectedStudent && selectedStudent.nombre === student.nombre ? "text-burgundy" : "text-slate-300"
                                                 }`} />
                                             </button>
                                         ))}
                                     </div>
 
-                                    {/* Botón Compilador de ZIP Completo */}
+                                    {/* Compilador ZIP masivo de PDFs */}
                                     <div className="p-4 bg-slate-50 border-t border-slate-150 flex flex-col gap-2">
                                         <button
                                             onClick={downloadAllPDFsAsZip}
@@ -870,23 +1005,23 @@
                                         >
                                             {isBulkGenerating ? (
                                                 <div className="flex items-center gap-1.5 animate-pulse">
-                                                    <span>Generando {bulkProgress.current}/{bulkProgress.total}...</span>
+                                                    <span>Compilando {bulkProgress.current}/{bulkProgress.total}...</span>
                                                 </div>
                                             ) : (
                                                 <>
                                                     <Icon name="folder-archive" className="w-4 h-4" />
-                                                    <span>Descargar ZIP de todo el Curso</span>
+                                                    <span>Descargar ZIP del Curso</span>
                                                 </>
                                             )}
                                         </button>
-                                        <div className="text-center text-[10px] text-slate-500">
-                                            Genera y empaqueta la libreta apaisada de cada estudiante en un ZIP.
+                                        <div className="text-center text-[10px] text-slate-400">
+                                            Genera y empaqueta en ZIP las libretas de todo el curso con el formato oficial de dos hojas.
                                         </div>
                                     </div>
                                 </aside>
 
-                                {/* Vista de la Libreta */}
-                                <div className="lg:col-span-9 flex flex-col gap-4">
+                                {/* Vista de Libreta en Pantalla e Impresión */}
+                                <div className="lg:col-span-9 flex flex-col gap-4 print-container">
                                     
                                     {/* Barra de Acciones del Alumno (no-print) */}
                                     {selectedStudent && (
@@ -894,7 +1029,7 @@
                                             <div className="flex items-center gap-2">
                                                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
                                                 <span className="text-xs font-semibold text-slate-600">Visualizando:</span>
-                                                <span className="text-xs font-bold text-burgundy bg-burgundy-light px-2 py-0.5 rounded border border-burgundy-light">
+                                                <span className="text-xs font-bold text-burgundy bg-burgundy-light px-2.5 py-1 rounded border border-burgundy-light">
                                                     {selectedStudent.nombre}
                                                 </span>
                                             </div>
@@ -905,7 +1040,7 @@
                                                     className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-burgundy hover:bg-burgundy-dark text-white rounded-lg font-semibold text-xs transition shadow-sm"
                                                 >
                                                     <Icon name="file-text" className="w-3.5 h-3.5" />
-                                                    <span>Descargar PDF Apaisado</span>
+                                                    <span>Descargar PDF (2 Páginas)</span>
                                                 </button>
 
                                                 <button
@@ -913,130 +1048,103 @@
                                                     className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg font-semibold text-xs transition"
                                                 >
                                                     <Icon name="printer" className="w-3.5 h-3.5" />
-                                                    <span>Imprimir</span>
+                                                    <span>Imprimir Libreta</span>
                                                 </button>
                                             </div>
                                         </div>
                                     )}
 
-                                    {/* DISEÑO VISUAL DE LA LIBRETA (Formato de Grilla Completo Apaisado) */}
                                     {selectedStudent ? (
-                                        <div className="bg-white rounded-xl border border-slate-300 p-6 shadow-md print-card relative max-w-full overflow-hidden">
-                                            <div>
-                                                {/* Encabezado Escolar */}
-                                                <div className="flex flex-row justify-between items-start border-b-2 border-burgundy pb-4 mb-5 gap-4">
+                                        <div className="flex flex-col gap-8 print:gap-0">
+                                            
+                                            {/* ===== HOJA 1: NÚCLEOS 1 AL 4 ===== */}
+                                            <div className="bg-white rounded-xl border border-slate-300 p-6 shadow-md print-card relative max-w-full overflow-hidden print:mb-0">
+                                                {/* Cabecera */}
+                                                <div className="flex flex-row justify-between items-start border-b-2 border-burgundy pb-3 mb-4 gap-4">
                                                     <div className="flex-1">
-                                                        <h2 className="text-xs font-bold tracking-widest text-burgundy uppercase mb-1">
-                                                            Informe de Calificaciones
+                                                        <h2 className="text-[10px] font-bold tracking-wider text-burgundy uppercase mb-1">
+                                                            Colegio San José - Informe de Rendimiento Académico
                                                         </h2>
-                                                        <h1 className="text-2xl font-serif-elegant font-bold text-slate-800 tracking-tight leading-none uppercase">
-                                                            {courseName}
+                                                        <h1 className="text-xl font-serif-elegant font-bold text-slate-800 tracking-tight leading-none uppercase">
+                                                            {selectedCourseName}
                                                         </h1>
-                                                        <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider">
-                                                            Ciclo Lectivo en Curso - Colegio San José
+                                                        <p className="text-[9px] text-slate-400 mt-1 uppercase tracking-wider">
+                                                            Nivel Secundario  |  Página 1 de 2
                                                         </p>
                                                     </div>
 
-                                                    {/* Logo escolar */}
                                                     {logo && (
                                                         <img 
                                                             src={logo} 
                                                             alt="Logo Escuela" 
-                                                            className="h-14 w-auto object-contain shrink-0 max-w-[150px]"
+                                                            className="h-12 w-auto object-contain shrink-0 max-w-[140px]"
                                                         />
                                                     )}
                                                 </div>
 
-                                                {/* Información del Estudiante */}
-                                                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-5 grid grid-cols-2 gap-3 text-xs">
-                                                    <div>
-                                                        <span className="text-burgundy uppercase text-[9px] font-bold block mb-0.5">Estudiante</span>
+                                                {/* Ficha Estudiante */}
+                                                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4 grid grid-cols-3 gap-3 text-xs shadow-inner">
+                                                    <div className="col-span-2">
+                                                        <span className="text-burgundy uppercase text-[8px] font-bold block mb-0.5">ESTUDIANTE</span>
                                                         <span className="font-bold text-slate-800 text-sm uppercase">{selectedStudent.nombre}</span>
                                                     </div>
                                                     <div>
-                                                        <span className="text-burgundy uppercase text-[9px] font-bold block mb-0.5">Curso / División</span>
-                                                        <span className="font-bold text-slate-800 text-sm">{courseName}</span>
+                                                        <span className="text-burgundy uppercase text-[8px] font-bold block mb-0.5">CURSO / SECCIÓN</span>
+                                                        <span className="font-bold text-slate-800 text-sm">{selectedCourseName}</span>
                                                     </div>
                                                 </div>
 
-                                                {/* Contenedor de la tabla con Scrollbar de Precisión integrado */}
-                                                <div className="overflow-x-auto border border-slate-300 rounded-lg max-w-full my-2 custom-scrollbar">
-                                                    <table className="w-full text-left border-collapse text-[10px] min-w-[850px] table-fixed">
-                                                        <thead>
-                                                            {/* Fila 1: Núcleos agrupados con letras y anchos reducidos */}
-                                                            <tr className="bg-burgundy text-white border-b border-slate-300">
-                                                                <th className="py-1 px-2 font-bold uppercase tracking-wider border-r border-slate-700 text-left w-48 text-[8px]">Asignatura y Docente</th>
-                                                                {nucleoHeaders.map((nh, idx) => (
-                                                                    <th 
-                                                                        key={idx} 
-                                                                        colSpan={nh.colspan} 
-                                                                        className="py-1 px-1 font-bold uppercase tracking-wider text-center border-r border-slate-700 last:border-r-0 text-[8px]"
-                                                                    >
-                                                                        {nh.name}
-                                                                    </th>
-                                                                ))}
-                                                            </tr>
-                                                            {/* Fila 2: Subheaders individuales con letra super compacta */}
-                                                            <tr className="bg-slate-100 text-slate-700 border-b border-slate-300">
-                                                                <th className="py-1 px-2 border-r border-slate-300 w-48 text-left"></th>
-                                                                {globalColumns.map((col, idx) => (
-                                                                    <th 
-                                                                        key={idx} 
-                                                                        className="py-1 px-0.5 font-bold text-center border-r border-slate-200 last:border-r-0 text-[7px] w-8 min-w-[28px] max-w-[34px] truncate"
-                                                                        title={col.subheader}
-                                                                    >
-                                                                        {col.subheader}
-                                                                    </th>
-                                                                ))}
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-slate-200">
-                                                            {Object.entries(selectedStudent.materias).map(([materiaName, dataObj]) => (
-                                                                <tr key={materiaName} className="hover:bg-slate-50/50">
-                                                                    <td className="py-1.5 px-2 border-r border-slate-200 w-48 shrink-0">
-                                                                        <div className="font-bold text-slate-800 text-[10px] truncate">{materiaName}</div>
-                                                                        <div className="text-[8px] text-slate-400 truncate">Doc: {dataObj.docente}</div>
-                                                                    </td>
-                                                                    {globalColumns.map((col, idx) => {
-                                                                        const val = dataObj.calificaciones[col.key];
-                                                                        const isNFN = col.subheader.includes("NFN") || col.subheader.includes("NFS");
-                                                                        const belowSeven = isBelowSeven(val);
-                                                                        
-                                                                        // Definir clases dinámicas según la columna y el valor
-                                                                        let cellClass = "py-1.5 px-0.5 text-center border-r border-slate-150 last:border-r-0 text-[8px] w-8 min-w-[28px] max-w-[34px] ";
-                                                                        
-                                                                        if (isNFN) {
-                                                                            cellClass += "bg-burgundy-light font-black text-burgundy text-[9px] border-x border-burgundy-light ";
-                                                                        } else {
-                                                                            cellClass += "text-slate-800 font-semibold ";
-                                                                        }
-
-                                                                        if (belowSeven) {
-                                                                            cellClass += "text-red-600 font-bold ";
-                                                                        }
-
-                                                                        return (
-                                                                            <td key={idx} className={cellClass}>
-                                                                                {val !== undefined ? val : "-"}
-                                                                            </td>
-                                                                        );
-                                                                    })}
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
+                                                <div className="mb-2">
+                                                    <span className="inline-block bg-burgundy text-white text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                                                        PRIMERA PARTE: NÚCLEOS DE APRENDIZAJE 1 AL 4
+                                                    </span>
                                                 </div>
 
-                                                {/* Fecha de Emisión del Informe abajo a la derecha */}
-                                                <div className="mt-6 pt-3 border-t border-slate-200 flex justify-between items-center text-[9px] text-slate-400 font-semibold uppercase tracking-wider">
-                                                    <span>Colegio San José - Informe Académico</span>
-                                                    <span>Fecha de Emisión: {getFormattedDate()}</span>
+                                                {/* Tabla de la primera mitad */}
+                                                {renderTableSection(selectedStudent, 1, 4)}
+
+                                                {/* Pie de Página 1 */}
+                                                <div className="mt-4 pt-2 border-t border-slate-200 flex justify-between items-center text-[9px] text-slate-400 font-semibold uppercase tracking-wider">
+                                                    <span>Colegio San José  |  Documento Académico Oficial</span>
+                                                    <span>PÁGINA 1 DE 2  |  Emitido el: {getFormattedDate()}</span>
                                                 </div>
                                             </div>
+
+                                            {/* ===== HOJA 2: NÚCLEOS 5 AL 8 ===== */}
+                                            <div className="bg-white rounded-xl border border-slate-300 p-6 shadow-md print-card relative max-w-full overflow-hidden print-page-break">
+                                                {/* Cabecera resumida de control */}
+                                                <div className="flex flex-row justify-between items-center border-b-2 border-burgundy pb-2 mb-3">
+                                                    <div>
+                                                        <h1 className="text-md font-serif-elegant font-bold text-slate-800 tracking-tight leading-none uppercase">
+                                                            COLEGIO SAN JOSÉ
+                                                        </h1>
+                                                        <p className="text-[9px] text-slate-400 tracking-wider">
+                                                            {selectedCourseName}  |  Página 2 de 2
+                                                        </p>
+                                                    </div>
+                                                    <span className="text-[9.5px] font-bold text-slate-600 uppercase">Estudiante: {selectedStudent.nombre}</span>
+                                                </div>
+
+                                                <div className="mb-2">
+                                                    <span className="inline-block bg-burgundy text-white text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                                                        SEGUNDA PARTE: NÚCLEOS DE APRENDIZAJE 5 AL 8
+                                                    </span>
+                                                </div>
+
+                                                {/* Tabla de la segunda mitad */}
+                                                {renderTableSection(selectedStudent, 5, 8)}
+
+                                                {/* Pie de Página 2 */}
+                                                <div className="mt-6 pt-2 border-t border-slate-200 flex justify-between items-center text-[9px] text-slate-400 font-semibold uppercase tracking-wider">
+                                                    <span>Colegio San José  |  Documento Académico Oficial</span>
+                                                    <span>PÁGINA 2 DE 2  |  Emitido el: {getFormattedDate()}</span>
+                                                </div>
+                                            </div>
+
                                         </div>
                                     ) : (
                                         <div className="p-12 text-center text-slate-400 bg-white border border-slate-200 rounded-xl shadow-sm">
-                                            Selecciona un alumno para previsualizar.
+                                            Selecciona un estudiante de la lista lateral para visualizar su libreta.
                                         </div>
                                     )}
                                 </div>
@@ -1050,7 +1158,7 @@
                         <p>© 2026 Colegio San José - Todos los derechos reservados.</p>
                     </footer>
 
-                    {/* Notificación (Toast) */}
+                    {/* Notificación Toast */}
                     {toast && (
                         <div className="fixed bottom-4 right-4 z-50 no-print">
                             <div className={`px-4 py-2.5 rounded-lg shadow-xl text-white font-semibold text-xs flex items-center gap-2 ${
@@ -1070,3 +1178,16 @@
     </script>
 </body>
 </html>
+
+                   
+        
+
+                                
+                            
+                        
+           
+                
+              
+                            
+                                                    
+                               
