@@ -1,4 +1,4 @@
-
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -7,7 +7,7 @@
     <!-- Tailwind CSS para diseño responsive y moderno -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts elegantes -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700;800&family=Playfair+Display:ital,wght=0,600;0,700;1,600&display=swap" rel="stylesheet">
     
     <!-- React y ReactDOM UMD -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
@@ -231,6 +231,7 @@
             const [students, setStudents] = useState([]);
             const [selectedStudent, setSelectedStudent] = useState(null);
             
+            // Logotipo escolar - se inicializa únicamente desde localStorage o vacío
             const [logo, setLogo] = useState(localStorage.getItem('school_logo') || "");
             const [searchQuery, setSearchQuery] = useState("");
             const [toast, setToast] = useState(null);
@@ -262,7 +263,7 @@
                 return `${day}/${month}/${year}`;
             };
 
-            // Evaluar notas bajas de forma segura
+            // Evaluar notas bajas de forma segura (menor a 7)
             const isBelowSeven = (val) => {
                 if (val === undefined || val === null || val === "") return false;
                 const normalized = val.toString().replace(',', '.').trim();
@@ -500,7 +501,7 @@
                     doc.setFillColor(128, 0, 32); 
                     doc.rect(12, 12, 273, 5, 'F');
 
-                    // Logo institucional
+                    // Logo institucional (solo si está cargado por el usuario)
                     if (logo) {
                         try {
                             doc.addImage(logo, 'JPEG', 12, 20, 24, 15); 
@@ -619,11 +620,16 @@
                             const belowSeven = isBelowSeven(valStr);
 
                             if (isNFN) {
-                                data.cell.styles.fillColor = [253, 245, 246]; // Fondo de destaque
+                                data.cell.styles.fillColor = [241, 245, 249]; // Sombrear columna final en gris
                                 data.cell.styles.fontStyle = 'bold';
-                                data.cell.styles.fontSize = 10; // Nota final siempre mayor
-                                data.cell.styles.textColor = [128, 0, 32]; // NUNCA ROJA
+                                data.cell.styles.fontSize = 10;
+                                if (belowSeven) {
+                                    data.cell.styles.textColor = [220, 38, 38]; // Rojo si es menor a 7
+                                } else {
+                                    data.cell.styles.textColor = [29, 78, 216]; // Azul institucional si es >= 7
+                                }
                             } else if (belowSeven) {
+                                data.cell.styles.fillColor = [254, 226, 226]; // Sombreado rojo para etapas parciales
                                 data.cell.styles.textColor = [220, 38, 38]; // Notas parciales bajas en rojo
                                 data.cell.styles.fontStyle = 'bold';
                             }
@@ -695,11 +701,16 @@
                             const belowSeven = isBelowSeven(valStr);
 
                             if (isNFN) {
-                                data.cell.styles.fillColor = [253, 245, 246]; // Fondo de destaque
+                                data.cell.styles.fillColor = [241, 245, 249]; // Sombrear columna final en gris
                                 data.cell.styles.fontStyle = 'bold';
-                                data.cell.styles.fontSize = 10; // Nota final siempre mayor
-                                data.cell.styles.textColor = [128, 0, 32]; // NUNCA ROJA
+                                data.cell.styles.fontSize = 10;
+                                if (belowSeven) {
+                                    data.cell.styles.textColor = [220, 38, 38]; // Rojo si es menor a 7
+                                } else {
+                                    data.cell.styles.textColor = [29, 78, 216]; // Azul institucional si es >= 7
+                                }
                             } else if (belowSeven) {
+                                data.cell.styles.fillColor = [254, 226, 226]; // Sombreado rojo para etapas parciales
                                 data.cell.styles.textColor = [220, 38, 38]; // Notas parciales bajas en rojo
                                 data.cell.styles.fontStyle = 'bold';
                             }
@@ -789,7 +800,7 @@
                                                 <th 
                                                     key={`${n}_${sub}`} 
                                                     className={`py-1 px-0.5 font-bold text-center border-r border-slate-200 last:border-r-0 text-[10px] w-12 min-w-[36px] max-w-[42px] truncate ${
-                                                        isNFN ? 'bg-burgundy-light text-burgundy font-black text-[11px]' : ''
+                                                        isNFN ? 'bg-slate-200 text-blue-700 font-black text-[11px]' : ''
                                                     }`}
                                                 >
                                                     {sub}
@@ -814,20 +825,26 @@
                                                 const val = dataObj.calificaciones[`NUC${n}_${sub}`];
                                                 const isNFN = (sIdx === 5);
                                                 
-                                                // Excluir Nota Final (NFN) de las alertas en color rojo
-                                                const belowSeven = !isNFN && isBelowSeven(val);
+                                                const belowSeven = isBelowSeven(val);
                                                 
                                                 let cellClass = "py-2 px-0.5 text-center border-r border-slate-150 last:border-r-0 w-12 min-w-[36px] max-w-[42px] ";
                                                 
                                                 if (isNFN) {
-                                                    // Nota final más grande y destacada en negro institucional, NUNCA ROJA
-                                                    cellClass += "bg-burgundy-light font-black text-burgundy text-[14px] border-x border-burgundy-light/60 ";
+                                                    // Nota final más grande y sombreada en gris
+                                                    cellClass += "bg-slate-100 font-black text-[14px] border-x border-slate-200 ";
+                                                    if (belowSeven) {
+                                                        cellClass += "text-red-600 "; // Rojo si es menor a 7
+                                                    } else {
+                                                        cellClass += "text-blue-700 "; // Azul si es mayor o igual a 7
+                                                    }
                                                 } else {
-                                                    cellClass += "text-slate-700 font-semibold text-[11px] ";
-                                                }
-
-                                                if (belowSeven) {
-                                                    cellClass += "text-red-600 font-bold ";
+                                                    // Etapas parciales
+                                                    if (belowSeven) {
+                                                        // Parciales menores a 7 están en rojo y con fondo sombreado rojo
+                                                        cellClass += "bg-red-50 text-red-600 font-bold text-[11.5px] ";
+                                                    } else {
+                                                        cellClass += "text-slate-700 font-semibold text-[11px] ";
+                                                    }
                                                 }
 
                                                 return (
@@ -937,7 +954,7 @@
                                     </p>
 
                                     <label className="cursor-pointer inline-flex items-center gap-2 px-6 py-3.5 bg-burgundy hover:bg-burgundy-dark text-white rounded-xl shadow-lg font-semibold text-sm transition-all transform hover:-translate-y-0.5">
-                                        <Icon name="plus-circle" className="w-5 h-5" />
+                                        <Icon name="upload-cloud" className="w-5 h-5" />
                                         <span>Seleccionar Planilla Excel</span>
                                         <input 
                                             type="file" 
@@ -1178,16 +1195,3 @@
     </script>
 </body>
 </html>
-
-                   
-        
-
-                                
-                            
-                        
-           
-                
-              
-                            
-                                                    
-                               
