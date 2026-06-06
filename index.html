@@ -225,13 +225,11 @@
         }
 
         function App() {
-            // Colección de cursos cargados de forma continua para retención en memoria
             const [courses, setCourses] = useState({}); // Clave: NombreCurso -> Estudiantes
             const [selectedCourseName, setSelectedCourseName] = useState("");
             const [students, setStudents] = useState([]);
             const [selectedStudent, setSelectedStudent] = useState(null);
             
-            // Logotipo escolar - se inicializa únicamente desde localStorage o vacío
             const [logo, setLogo] = useState(localStorage.getItem('school_logo') || "");
             const [searchQuery, setSearchQuery] = useState("");
             const [toast, setToast] = useState(null);
@@ -240,7 +238,6 @@
             const [isBulkGenerating, setIsBulkGenerating] = useState(false);
             const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
 
-            // Sincronizar título de pestaña del navegador de forma reactiva
             useEffect(() => {
                 if (selectedCourseName) {
                     document.title = `Libretas - ${selectedCourseName}`;
@@ -254,7 +251,6 @@
                 setTimeout(() => setToast(null), 4500);
             };
 
-            // Formateador de fecha de generación al pie
             const getFormattedDate = () => {
                 const today = new Date();
                 const day = String(today.getDate()).padStart(2, '0');
@@ -263,23 +259,12 @@
                 return `${day}/${month}/${year}`;
             };
 
-            // Evaluar notas bajas de forma segura (menor a 7)
             const isBelowSeven = (val) => {
                 if (val === undefined || val === null || val === "") return false;
                 const normalized = val.toString().replace(',', '.').trim();
                 const num = parseFloat(normalized);
                 return !isNaN(num) && num < 7;
             };
-
-            // Estructura fija de los 8 núcleos de aprendizaje
-            const NUCLEOS_METADATA = Array.from({ length: 8 }, (_, i) => {
-                const nIndex = i + 1;
-                return {
-                    num: nIndex,
-                    title: `NÚCLEO ${nIndex}`,
-                    subheaders: ["N1", "N2", "N3", "R1", "R2", `NFN${nIndex}`]
-                };
-            });
 
             const handleLogoUpload = (e) => {
                 const file = e.target.files[0];
@@ -330,7 +315,6 @@
 
                         workbook.SheetNames.forEach(sheetName => {
                             const nameLower = sheetName.toLowerCase();
-                            // Ignorar pestañas accesorias
                             if (nameLower.includes("sintesis") || nameLower.includes("síntesis") || nameLower.includes("resumen")) {
                                 return;
                             }
@@ -339,7 +323,6 @@
                             const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                             if (rows.length < 3) return;
 
-                            // Leer nombre oficial de la Asignatura y su Docente
                             let materiaName = sheetName.trim();
                             let docenteName = "Docente s/d";
 
@@ -361,7 +344,6 @@
                                 }
                             }
 
-                            // Ubicar la fila de cabecera de estudiantes
                             let studentHeaderRowIdx = -1;
                             let studentNameColIdx = -1;
 
@@ -384,7 +366,6 @@
                                 return;
                             }
 
-                            // Mapeo estructurado directo de notas respetando fielmente el Excel
                             for (let r = studentHeaderRowIdx + 2; r < rows.length; r++) {
                                 const row = rows[r];
                                 if (!row || !row[studentNameColIdx]) continue;
@@ -431,7 +412,6 @@
 
                         parsedStudents.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
-                        // Consolidar carga continua acumulando cursos sin sobrescribir el estado previo
                         setCourses(prev => {
                             const updated = { ...prev, [formattedCourse]: parsedStudents };
                             return updated;
@@ -492,68 +472,72 @@
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF('l', 'mm', 'a4'); // Paisaje A4 (297x210mm)
 
+                // Encabezado Ultra Angosto y Optimizado (Gana 20mm de espacio vertical libre para evitar saltos de renglón)
                 const drawTemplate = (pageNum, studentName, currentCourse) => {
-                    // Fondo premium institucional
+                    // Fondo premium institucional de fondo de página
                     doc.setFillColor(253, 251, 251);
                     doc.rect(0, 0, 297, 210, 'F');
 
-                    // Barra superior corporativa bordó
+                    // Barra superior borgoña sumamente compacta (Y: 8 a 11 mm)
                     doc.setFillColor(128, 0, 32); 
-                    doc.rect(12, 12, 273, 5, 'F');
+                    doc.rect(12, 8, 273, 3, 'F');
 
-                    // Logo institucional (solo si está cargado por el usuario)
+                    // Renderizado del Logo si está cargado por el usuario (Y: 13 a 23 mm)
+                    let textOffset = 12;
                     if (logo) {
                         try {
-                            doc.addImage(logo, 'JPEG', 12, 20, 24, 15); 
+                            doc.addImage(logo, 'JPEG', 12, 13, 18, 10); 
+                            textOffset = 33;
                         } catch (err) {
                             console.error("Error al renderizar el logo en el PDF", err);
                         }
                     }
 
-                    // Títulos y metadatos
+                    // Títulos institucionales en una única línea combinada reducida
                     doc.setFont("Helvetica", "bold");
-                    doc.setFontSize(15);
-                    doc.setTextColor(128, 0, 32);
-                    doc.text("COLEGIO SAN JOSÉ", logo ? 40 : 12, 25);
-
-                    doc.setFont("Helvetica", "bold");
-                    doc.setFontSize(10);
-                    doc.setTextColor(51, 65, 85);
-                    doc.text(`INFORME DE CALIFICACIONES - ${currentCourse || "GENERAL"}`, logo ? 40 : 12, 31);
-
-                    // Recuadro ficha del estudiante
-                    doc.setFillColor(255, 255, 255);
-                    doc.setDrawColor(241, 218, 221);
-                    doc.roundedRect(12, 38, 273, 16, 2, 2, 'FD');
-
-                    doc.setFont("Helvetica", "bold");
-                    doc.setFontSize(8);
-                    doc.setTextColor(128, 0, 32);
-                    doc.text("ESTUDIANTE", 16, 43);
-                    doc.setTextColor(30, 41, 59);
                     doc.setFontSize(11);
-                    doc.text(studentName.toUpperCase(), 16, 49);
+                    doc.setTextColor(128, 0, 32);
+                    doc.text("COLEGIO SAN JOSÉ", textOffset, 18);
 
                     doc.setFont("Helvetica", "bold");
-                    doc.setFontSize(8);
+                    doc.setFontSize(7.5);
+                    doc.setTextColor(100, 116, 139);
+                    doc.text("INFORME DE CALIFICACIONES OFICIAL", textOffset, 22);
+
+                    // Fila única consolidada para datos del estudiante (Y: 26 a 34 mm)
+                    doc.setFillColor(248, 250, 252);
+                    doc.setDrawColor(226, 232, 240);
+                    doc.roundedRect(12, 26, 273, 8, 1, 1, 'FD');
+
+                    // Contenido de la Ficha en una sola línea horizontal
+                    doc.setFont("Helvetica", "bold");
+                    doc.setFontSize(6.5);
                     doc.setTextColor(128, 0, 32);
-                    doc.text("CURSO / DIVISIÓN", 190, 43);
+                    doc.text("ESTUDIANTE:", 16, 31.5);
                     doc.setTextColor(30, 41, 59);
-                    doc.setFontSize(11);
-                    doc.text(currentCourse || "GENERAL", 190, 49);
+                    doc.setFontSize(8.5);
+                    doc.text(studentName.toUpperCase(), 36, 31.5);
 
                     doc.setFont("Helvetica", "bold");
-                    doc.setFontSize(8);
+                    doc.setFontSize(6.5);
                     doc.setTextColor(128, 0, 32);
-                    doc.text("FECHA EMISIÓN", 242, 43);
+                    doc.text("CURSO / DIVISIÓN:", 165, 31.5);
                     doc.setTextColor(30, 41, 59);
-                    doc.setFontSize(11);
-                    doc.text(getFormattedDate(), 242, 49);
+                    doc.setFontSize(8);
+                    doc.text(currentCourse || "GENERAL", 192, 31.5);
+
+                    doc.setFont("Helvetica", "bold");
+                    doc.setFontSize(6.5);
+                    doc.setTextColor(128, 0, 32);
+                    doc.text("EMISIÓN:", 242, 31.5);
+                    doc.setTextColor(30, 41, 59);
+                    doc.setFontSize(8);
+                    doc.text(getFormattedDate(), 256, 31.5);
                 };
 
                 const writeFooter = (pageNum) => {
                     doc.setFont("Helvetica", "normal");
-                    doc.setFontSize(8.5);
+                    doc.setFontSize(8);
                     doc.setTextColor(148, 163, 184);
                     doc.text(`Informe académico oficial de calificaciones  |  Colegio San José`, 12, 198);
                     doc.text(`Página ${pageNum} de 2  |  Emitido el: ${getFormattedDate()}`, 285, 198, { align: "right" });
@@ -562,7 +546,6 @@
                 // ---- HOJA 1: Núcleos 1 a 4 ----
                 drawTemplate(1, student.nombre, cName);
 
-                // Cabeceras agrupadas primera parte
                 const page1HeadersGrouped = [{ content: 'Asignatura / Docente', rowSpan: 2, valign: 'middle', halign: 'left' }];
                 for (let n = 1; n <= 4; n++) {
                     page1HeadersGrouped.push({ content: `NÚCLEO ${n}`, colSpan: 6, halign: 'center' });
@@ -575,7 +558,6 @@
                     });
                 }
 
-                // Renderizado exacto con salto de línea entre Materia y Docente
                 const page1Body = Object.entries(student.materias).map(([materiaName, dataObj]) => {
                     const rowCells = [`${materiaName}\nDoc: ${dataObj.docente}`];
                     for (let n = 1; n <= 4; n++) {
@@ -586,8 +568,9 @@
                     return rowCells;
                 });
 
+                // Comenzando exactamente a los 38mm para maximizar el área de impresión útil
                 doc.autoTable({
-                    startY: 58,
+                    startY: 38,
                     margin: { left: 12, right: 12, bottom: 15 },
                     head: [page1HeadersGrouped, page1Subheaders],
                     body: page1Body,
@@ -596,7 +579,7 @@
                         fillColor: [128, 0, 32],
                         textColor: [255, 255, 255],
                         fontStyle: 'bold',
-                        fontSize: 8.5,
+                        fontSize: 8,
                         halign: 'center',
                         valign: 'middle',
                         cellPadding: 1.5
@@ -608,29 +591,29 @@
                         halign: 'center'
                     },
                     columnStyles: {
-                        0: { cellWidth: 48, halign: 'left', fontStyle: 'bold', fontSize: 8.5 }
+                        0: { cellWidth: 48, halign: 'left', fontStyle: 'bold', fontSize: 8 }
                     },
                     didParseCell: function (data) {
                         if (data.row.section === 'body' && data.column.index > 0) {
                             const relativeColIdx = data.column.index - 1;
                             const subIdx = relativeColIdx % 6; 
-                            const isNFN = (subIdx === 5); // Es columna de nota final
+                            const isNFN = (subIdx === 5);
 
                             const valStr = data.cell.text[0] ? data.cell.text[0].trim() : "";
                             const belowSeven = isBelowSeven(valStr);
 
                             if (isNFN) {
-                                data.cell.styles.fillColor = [241, 245, 249]; // Sombrear columna final en gris
+                                data.cell.styles.fillColor = [241, 245, 249];
                                 data.cell.styles.fontStyle = 'bold';
-                                data.cell.styles.fontSize = 10;
+                                data.cell.styles.fontSize = 9.5;
                                 if (belowSeven) {
-                                    data.cell.styles.textColor = [220, 38, 38]; // Rojo si es menor a 7
+                                    data.cell.styles.textColor = [220, 38, 38];
                                 } else {
-                                    data.cell.styles.textColor = [29, 78, 216]; // Azul institucional si es >= 7
+                                    data.cell.styles.textColor = [29, 78, 216];
                                 }
                             } else if (belowSeven) {
-                                data.cell.styles.fillColor = [254, 226, 226]; // Sombreado rojo para etapas parciales
-                                data.cell.styles.textColor = [220, 38, 38]; // Notas parciales bajas en rojo
+                                data.cell.styles.fillColor = [254, 226, 226];
+                                data.cell.styles.textColor = [220, 38, 38];
                                 data.cell.styles.fontStyle = 'bold';
                             }
                         }
@@ -643,7 +626,6 @@
                 doc.addPage('l', 'mm', 'a4');
                 drawTemplate(2, student.nombre, cName);
 
-                // Cabeceras agrupadas segunda parte
                 const page2HeadersGrouped = [{ content: 'Asignatura / Docente', rowSpan: 2, valign: 'middle', halign: 'left' }];
                 for (let n = 5; n <= 8; n++) {
                     page2HeadersGrouped.push({ content: `NÚCLEO ${n}`, colSpan: 6, halign: 'center' });
@@ -656,7 +638,6 @@
                     });
                 }
 
-                // Renderizado exacto con salto de línea entre Materia y Docente
                 const page2Body = Object.entries(student.materias).map(([materiaName, dataObj]) => {
                     const rowCells = [`${materiaName}\nDoc: ${dataObj.docente}`];
                     for (let n = 5; n <= 8; n++) {
@@ -667,8 +648,9 @@
                     return rowCells;
                 });
 
+                // Comenzando exactamente a los 38mm para maximizar el área de la segunda página
                 doc.autoTable({
-                    startY: 58,
+                    startY: 38,
                     margin: { left: 12, right: 12, bottom: 15 },
                     head: [page2HeadersGrouped, page2Subheaders],
                     body: page2Body,
@@ -677,7 +659,7 @@
                         fillColor: [128, 0, 32],
                         textColor: [255, 255, 255],
                         fontStyle: 'bold',
-                        fontSize: 8.5,
+                        fontSize: 8,
                         halign: 'center',
                         valign: 'middle',
                         cellPadding: 1.5
@@ -689,29 +671,29 @@
                         halign: 'center'
                     },
                     columnStyles: {
-                        0: { cellWidth: 48, halign: 'left', fontStyle: 'bold', fontSize: 8.5 }
+                        0: { cellWidth: 48, halign: 'left', fontStyle: 'bold', fontSize: 8 }
                     },
                     didParseCell: function (data) {
                         if (data.row.section === 'body' && data.column.index > 0) {
                             const relativeColIdx = data.column.index - 1;
                             const subIdx = relativeColIdx % 6; 
-                            const isNFN = (subIdx === 5); // Es columna de nota final
+                            const isNFN = (subIdx === 5);
 
                             const valStr = data.cell.text[0] ? data.cell.text[0].trim() : "";
                             const belowSeven = isBelowSeven(valStr);
 
                             if (isNFN) {
-                                data.cell.styles.fillColor = [241, 245, 249]; // Sombrear columna final en gris
+                                data.cell.styles.fillColor = [241, 245, 249];
                                 data.cell.styles.fontStyle = 'bold';
-                                data.cell.styles.fontSize = 10;
+                                data.cell.styles.fontSize = 9.5;
                                 if (belowSeven) {
-                                    data.cell.styles.textColor = [220, 38, 38]; // Rojo si es menor a 7
+                                    data.cell.styles.textColor = [220, 38, 38];
                                 } else {
-                                    data.cell.styles.textColor = [29, 78, 216]; // Azul institucional si es >= 7
+                                    data.cell.styles.textColor = [29, 78, 216];
                                 }
                             } else if (belowSeven) {
-                                data.cell.styles.fillColor = [254, 226, 226]; // Sombreado rojo para etapas parciales
-                                data.cell.styles.textColor = [220, 38, 38]; // Notas parciales bajas en rojo
+                                data.cell.styles.fillColor = [254, 226, 226];
+                                data.cell.styles.textColor = [220, 38, 38];
                                 data.cell.styles.fontStyle = 'bold';
                             }
                         }
@@ -813,7 +795,6 @@
                             <tbody className="divide-y divide-slate-200">
                                 {Object.entries(student.materias).map(([materiaName, dataObj]) => (
                                     <tr key={materiaName} className="hover:bg-slate-50/50 transition-colors">
-                                        {/* Primera columna: Nombre arriba, Docente abajo */}
                                         <td className="py-2 px-3 border-r border-slate-200 w-56 shrink-0">
                                             <div className="font-bold text-slate-800 text-xs truncate leading-normal">{materiaName}</div>
                                             <div className="text-[10px] text-slate-500 truncate leading-normal">Doc: {dataObj.docente}</div>
@@ -824,23 +805,19 @@
                                             return subheaders.map((sub, sIdx) => {
                                                 const val = dataObj.calificaciones[`NUC${n}_${sub}`];
                                                 const isNFN = (sIdx === 5);
-                                                
                                                 const belowSeven = isBelowSeven(val);
                                                 
                                                 let cellClass = "py-2 px-0.5 text-center border-r border-slate-150 last:border-r-0 w-12 min-w-[36px] max-w-[42px] ";
                                                 
                                                 if (isNFN) {
-                                                    // Nota final más grande y sombreada en gris
                                                     cellClass += "bg-slate-100 font-black text-[14px] border-x border-slate-200 ";
                                                     if (belowSeven) {
-                                                        cellClass += "text-red-600 "; // Rojo si es menor a 7
+                                                        cellClass += "text-red-600 ";
                                                     } else {
-                                                        cellClass += "text-blue-700 "; // Azul si es mayor o igual a 7
+                                                        cellClass += "text-blue-700 ";
                                                     }
                                                 } else {
-                                                    // Etapas parciales
                                                     if (belowSeven) {
-                                                        // Parciales menores a 7 están en rojo y con fondo sombreado rojo
                                                         cellClass += "bg-red-50 text-red-600 font-bold text-[11.5px] ";
                                                     } else {
                                                         cellClass += "text-slate-700 font-semibold text-[11px] ";
@@ -864,7 +841,7 @@
 
             return (
                 <div className="min-h-screen flex flex-col">
-                    {/* Header Principal */}
+                    {/* Header Principal de la Web */}
                     <header className="bg-white border-b border-slate-200 py-4 px-6 sticky top-0 z-30 no-print shadow-sm">
                         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-4">
@@ -894,7 +871,7 @@
                                 </div>
                             </div>
 
-                            {/* Gestión de Cargas Continuas y Logo */}
+                            {/* Gestión de Cargas de Logo y Planillas */}
                             <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
                                 {Object.keys(courses).length > 0 && (
                                     <div className="flex items-center gap-1.5">
@@ -926,10 +903,9 @@
                         </div>
                     </header>
 
-                    {/* Contenido Principal */}
+                    {/* Contenido Principal con Drag and Drop */}
                     <main className="flex-1 max-w-[97%] w-full mx-auto p-4 md:p-6 flex flex-col justify-center">
                         
-                        {/* 1. VISTA INICIAL VACÍA AL INICIO */}
                         {students.length === 0 ? (
                             <div className="max-w-2xl mx-auto w-full py-8 md:py-16">
                                 <div 
@@ -967,10 +943,8 @@
                             </div>
                         ) : (
                             
-                            /* 2. VISTA PRINCIPAL CON DATOS */
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                                 
-                                {/* Lista de Alumnos Lateral (no-print) */}
                                 <aside className="lg:col-span-3 bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm no-print">
                                     <div className="p-4 border-b border-slate-100 bg-slate-50/50">
                                         <div className="relative">
@@ -1013,7 +987,6 @@
                                         ))}
                                     </div>
 
-                                    {/* Compilador ZIP masivo de PDFs */}
                                     <div className="p-4 bg-slate-50 border-t border-slate-150 flex flex-col gap-2">
                                         <button
                                             onClick={downloadAllPDFsAsZip}
@@ -1037,10 +1010,8 @@
                                     </div>
                                 </aside>
 
-                                {/* Vista de Libreta en Pantalla e Impresión */}
                                 <div className="lg:col-span-9 flex flex-col gap-4 print-container">
                                     
-                                    {/* Barra de Acciones del Alumno (no-print) */}
                                     {selectedStudent && (
                                         <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-sm no-print">
                                             <div className="flex items-center gap-2">
@@ -1076,7 +1047,6 @@
                                             
                                             {/* ===== HOJA 1: NÚCLEOS 1 AL 4 ===== */}
                                             <div className="bg-white rounded-xl border border-slate-300 p-6 shadow-md print-card relative max-w-full overflow-hidden print:mb-0">
-                                                {/* Cabecera */}
                                                 <div className="flex flex-row justify-between items-start border-b-2 border-burgundy pb-3 mb-4 gap-4">
                                                     <div className="flex-1">
                                                         <h2 className="text-[10px] font-bold tracking-wider text-burgundy uppercase mb-1">
@@ -1099,7 +1069,6 @@
                                                     )}
                                                 </div>
 
-                                                {/* Ficha Estudiante */}
                                                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4 grid grid-cols-3 gap-3 text-xs shadow-inner">
                                                     <div className="col-span-2">
                                                         <span className="text-burgundy uppercase text-[8px] font-bold block mb-0.5">ESTUDIANTE</span>
@@ -1117,10 +1086,8 @@
                                                     </span>
                                                 </div>
 
-                                                {/* Tabla de la primera mitad */}
                                                 {renderTableSection(selectedStudent, 1, 4)}
 
-                                                {/* Pie de Página 1 */}
                                                 <div className="mt-4 pt-2 border-t border-slate-200 flex justify-between items-center text-[9px] text-slate-400 font-semibold uppercase tracking-wider">
                                                     <span>Colegio San José  |  Documento Académico Oficial</span>
                                                     <span>PÁGINA 1 DE 2  |  Emitido el: {getFormattedDate()}</span>
@@ -1129,7 +1096,6 @@
 
                                             {/* ===== HOJA 2: NÚCLEOS 5 AL 8 ===== */}
                                             <div className="bg-white rounded-xl border border-slate-300 p-6 shadow-md print-card relative max-w-full overflow-hidden print-page-break">
-                                                {/* Cabecera resumida de control */}
                                                 <div className="flex flex-row justify-between items-center border-b-2 border-burgundy pb-2 mb-3">
                                                     <div>
                                                         <h1 className="text-md font-serif-elegant font-bold text-slate-800 tracking-tight leading-none uppercase">
@@ -1148,10 +1114,8 @@
                                                     </span>
                                                 </div>
 
-                                                {/* Tabla de la segunda mitad */}
                                                 {renderTableSection(selectedStudent, 5, 8)}
 
-                                                {/* Pie de Página 2 */}
                                                 <div className="mt-6 pt-2 border-t border-slate-200 flex justify-between items-center text-[9px] text-slate-400 font-semibold uppercase tracking-wider">
                                                     <span>Colegio San José  |  Documento Académico Oficial</span>
                                                     <span>PÁGINA 2 DE 2  |  Emitido el: {getFormattedDate()}</span>
